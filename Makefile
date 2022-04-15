@@ -17,13 +17,13 @@ help:
 ## phpcs: run phpcs against the codebase
 phpcs:
 	@echo "Running phpcs ~"
-	@docker run --rm -v $(PWD):/app --rm cytopia/phpcs:3-php7.4 --standard=/app/phpcs-ruleset.xml /app/src /app/tests
+	@docker-compose exec -T php74 ./vendor/bin/phpcs --standard=/app/phpcs-ruleset.xml /app/src /app/tests
 
 .PHONY: psalm
 ## psalm: run psalm against the codebase
 psalm:
 	@echo "Running psalm ~"
-	@docker-compose exec -T -u $$(id -u) php ./vendor/bin/psalm
+	@docker-compose exec -T php74 ./vendor/bin/psalm
 
 .PHONY: check
 ## check: run psalm and phpcs against the codebase
@@ -66,4 +66,4 @@ phpunitall: phpunit74 phpunit80 phpunit81
 .PHONY: shell
 ## shell: opens a shell in the php container
 shell:
-	@docker-compose exec php sh
+	@docker-compose exec php74 sh

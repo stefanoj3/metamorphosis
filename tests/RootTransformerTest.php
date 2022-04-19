@@ -32,7 +32,6 @@ class RootTransformerTest extends TestCase
         ];
 
         $transformer = new class () implements TransformerInterface {
-
             public function transform($data, callable $transformer)
             {
                 return ['name' => $data->name];
@@ -106,7 +105,6 @@ class RootTransformerTest extends TestCase
     public function shouldThrowWhenTheTransformerIsNotImplementingTheTransformerInterface()
     {
         $invalidTransformer = new class () {
-
         };
 
         $myTransformerClassName = get_class($invalidTransformer);

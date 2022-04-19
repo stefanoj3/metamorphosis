@@ -10,7 +10,7 @@ use Psr\Container\ContainerInterface;
 
 use function get_class;
 
-class RootTransformerTest extends TestCase
+class RootTransformerIntegrationTest extends TestCase
 {
     use ProphecyTrait;
 
@@ -45,7 +45,7 @@ class RootTransformerTest extends TestCase
         $container->has($transformerClassName)->willReturn(true);
 
         $rootTransformer = new RootTransformer(
-            $container->reveal(),
+            new ContainerBasedTransformerBuilder($container->reveal()),
             [
                 $myEntityClassName => $transformerClassName,
             ]
@@ -75,7 +75,7 @@ class RootTransformerTest extends TestCase
     {
         $container = $this->prophesize(ContainerInterface::class);
 
-        $rootTransformer = new RootTransformer($container->reveal(), []);
+        $rootTransformer = new RootTransformer(new ContainerBasedTransformerBuilder($container->reveal()), []);
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/unable to resolve transformer for/');
@@ -92,7 +92,10 @@ class RootTransformerTest extends TestCase
         $container = $this->prophesize(ContainerInterface::class);
         $container->has($myTransformerClassName)->willReturn(false);
 
-        $rootTransformer = new RootTransformer($container->reveal(), [\stdClass::class => $myTransformerClassName]);
+        $rootTransformer = new RootTransformer(
+            new ContainerBasedTransformerBuilder($container->reveal()),
+            [\stdClass::class => $myTransformerClassName]
+        );
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/is not available in the container/');
@@ -113,7 +116,10 @@ class RootTransformerTest extends TestCase
         $container->has($myTransformerClassName)->willReturn(true);
         $container->get($myTransformerClassName)->willReturn($invalidTransformer);
 
-        $rootTransformer = new RootTransformer($container->reveal(), [\stdClass::class => $myTransformerClassName]);
+        $rootTransformer = new RootTransformer(
+            new ContainerBasedTransformerBuilder($container->reveal()),
+            [\stdClass::class => $myTransformerClassName]
+        );
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/does not implement/');
@@ -127,7 +133,10 @@ class RootTransformerTest extends TestCase
     {
         $container = $this->prophesize(ContainerInterface::class);
 
-        $rootTransformer = new RootTransformer($container->reveal(), []);
+        $rootTransformer = new RootTransformer(
+            new ContainerBasedTransformerBuilder($container->reveal()),
+            []
+        );
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/only array and object types are supported/');

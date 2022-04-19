@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Esse\Metamorphosis;
 
-use Psr\Container\ContainerInterface;
+use InvalidArgumentException;
+use Throwable;
 
 use function get_class;
 use function gettype;
@@ -14,10 +15,7 @@ use function sprintf;
 
 class RootTransformer
 {
-    /**
-     * @var ContainerInterface
-     */
-    private ContainerInterface $container;
+    private TransformerBuilderInterface $resolver;
 
     /**
      * @var string[]
@@ -25,19 +23,23 @@ class RootTransformer
     private array $entityToTransformerMapping;
 
     /**
-     * @param ContainerInterface $container
+     * @param TransformerBuilderInterface $resolver
      * @param string[] $entityToTransformerMapping
      */
-    public function __construct(ContainerInterface $container, array $entityToTransformerMapping)
+    public function __construct(TransformerBuilderInterface $resolver, array $entityToTransformerMapping)
     {
-        $this->container = $container;
+        $this->resolver = $resolver;
         $this->entityToTransformerMapping = $entityToTransformerMapping;
     }
 
     /**
-     * @param mixed $data
+     * @psalm-suppress DocblockTypeContradiction
+     *
+     * @param array|object $data
      *
      * @return mixed
+     *
+     * @throws Throwable
      */
     public function transform($data)
     {
@@ -45,7 +47,7 @@ class RootTransformer
             /** @var mixed[] $result */
             $result = [];
 
-            /** @var mixed $row */
+            /** @var array|object $row */
             foreach ($data as $row) {
                 /** @var mixed */
                 $result[] = $this->transform($row);
@@ -55,43 +57,33 @@ class RootTransformer
         }
 
         if (!is_object($data)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 sprintf('only array and object types are supported, received `%s`', gettype($data))
             );
         }
 
-        $transformer = $this->resolveTransformer($data);
+        $transformer = $this->getTransformer(get_class($data));
 
         return $transformer->transform($data, [$this, 'transform']);
     }
 
-    private function resolveTransformer(object $data): TransformerInterface
+    /**
+     * @param string $entityClassName
+     *
+     * @return TransformerInterface
+     *
+     * @throws InvalidArgumentException
+     */
+    private function getTransformer(string $entityClassName): TransformerInterface
     {
-        $dataClassName = get_class($data);
-
-        $transformerClassName = $this->entityToTransformerMapping[$dataClassName] ?? null;
+        $transformerClassName = $this->entityToTransformerMapping[$entityClassName] ?? null;
 
         if (!$transformerClassName) {
-            throw new \InvalidArgumentException(
-                sprintf('unable to resolve transformer for `%s`, none specified', $dataClassName)
+            throw new InvalidArgumentException(
+                sprintf('unable to resolve transformer for `%s`, none specified', $entityClassName)
             );
         }
 
-        if (!$this->container->has($transformerClassName)) {
-            throw new \InvalidArgumentException(
-                sprintf('`%s` is not available in the container', $transformerClassName)
-            );
-        }
-
-        /** @var object $transformer */
-        $transformer = $this->container->get($transformerClassName);
-
-        if (!$transformer instanceof TransformerInterface) {
-            throw new \InvalidArgumentException(
-                sprintf('`%s` does not implement `%s`', $transformerClassName, TransformerInterface::class)
-            );
-        }
-
-        return $transformer;
+        return $this->resolver->build($transformerClassName);
     }
 }

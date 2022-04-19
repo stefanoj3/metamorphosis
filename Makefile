@@ -37,7 +37,7 @@ devenv-setup:
 	@docker-compose exec -T php74 composer install
 
 .PHONY: phpunit74
-## phpunit74: run test suite inside the php74 container. To get a test report in the build/ folder set COVREPORT=true - EG COVREPORT=true make phpunit
+## phpunit74: run test suite inside the php74 container. To get a test report in the build/ folder set COVREPORT=true - EG COVREPORT=true make phpunit74
 phpunit74:
 	@echo "Running tests in php 7.4"
 	@docker-compose exec -T php74 ./vendor/bin/phpunit $(PHPUNITFLAGS)

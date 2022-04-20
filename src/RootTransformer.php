@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Esse\Metamorphosis;
 
+use InvalidArgumentException;
 use Psr\Container\ContainerInterface;
 
 use function get_class;
@@ -41,28 +42,15 @@ class RootTransformer
      */
     public function transform($data)
     {
-        if (is_array($data)) {
-            /** @var mixed[] $result */
-            $result = [];
+		if (is_array($data))
+			return $this->transformFromArray($data);
 
-            /** @var mixed $row */
-            foreach ($data as $row) {
-                /** @var mixed */
-                $result[] = $this->transform($row);
-            }
+		if(is_object($data))
+			return $this->transformFromObject($data);
 
-            return $result;
-        }
-
-        if (!is_object($data)) {
-            throw new \InvalidArgumentException(
-                sprintf('only array and object types are supported, received `%s`', gettype($data))
-            );
-        }
-
-        $transformer = $this->resolveTransformer($data);
-
-        return $transformer->transform($data, [$this, 'transform']);
+		throw new InvalidArgumentException(
+			sprintf('only array and object types are supported, received `%s`', gettype($data))
+		);
     }
 
     private function resolveTransformer(object $data): TransformerInterface
@@ -72,13 +60,13 @@ class RootTransformer
         $transformerClassName = $this->entityToTransformerMapping[$dataClassName] ?? null;
 
         if (!$transformerClassName) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 sprintf('unable to resolve transformer for `%s`, none specified', $dataClassName)
             );
         }
 
         if (!$this->container->has($transformerClassName)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 sprintf('`%s` is not available in the container', $transformerClassName)
             );
         }
@@ -87,11 +75,39 @@ class RootTransformer
         $transformer = $this->container->get($transformerClassName);
 
         if (!$transformer instanceof TransformerInterface) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 sprintf('`%s` does not implement `%s`', $transformerClassName, TransformerInterface::class)
             );
         }
 
         return $transformer;
     }
+
+	/**
+	 * @param array $data
+	 * @return array
+	 */
+	public function transformFromArray(array $data): array
+	{
+		$result = [];
+
+		foreach ($data as $row) {
+			/** @var mixed */
+			$result[] = $this->transform($row);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @param $data
+	 * @return mixed
+	 */
+	public function transformFromObject($data)
+	{
+		$transformer = $this->resolveTransformer($data);
+
+		return $transformer->transform($data, [$this, 'transform']);
+	}
 }
+
